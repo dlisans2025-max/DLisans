@@ -4,11 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DLisans</title>
+<link rel="icon" type="image/jpeg" href="https://i.postimg.cc/JGxxt6cV/Whats-App-Image-2025-09-27-at-03-12-23-b84d530b.jpg">
 <style>
 body, html { margin:0; padding:0; font-family: Arial, sans-serif; background:#f0f2f5; }
-header { display:flex; align-items:center; justify-content:center; background:#0078d7; padding:10px 20px; color:white; position: fixed; top:0; width:100%; z-index:1000; }
+header { display:flex; align-items:center; justify-content:center; background:#0078d7; padding:10px 20px; color:white; position: fixed; top:0; width:100%; z-index:1000; box-shadow:0 3px 10px rgba(0,0,0,0.2);}
 #logo-text { font-size:36px; font-weight:bold; }
-#cart-btn { position:absolute; right:50px; font-size:20px; cursor:pointer; background:white; color:#0078d7; padding:6px 12px; border-radius:8px; display:none; }
+#cart-btn { position:absolute; right:50px; font-size:20px; cursor:pointer; background:white; color:#0078d7; padding:6px 12px; border-radius:8px; font-weight:bold; display:none; }
 #logout-btn { position:absolute; right:200px; top:10px; background:#ff4444; color:white; padding:6px 12px; border:none; border-radius:8px; cursor:pointer; display:none; }
 .main { margin-top:100px; max-width:1000px; margin-left:auto; margin-right:auto; padding:20px; }
 .auth-container { position: fixed; top:0; left:0; width:100%; height:100%; display:flex; justify-content:center; align-items:center; background: linear-gradient(135deg,#4facfe,#00f2fe); z-index:999; }
@@ -16,6 +17,9 @@ header { display:flex; align-items:center; justify-content:center; background:#0
 .auth-box h2 { color:#0078d7; margin-bottom:25px; }
 .auth-box button { width:100%; padding:12px; border:none; border-radius:8px; font-size:16px; margin-top:10px; cursor:pointer; font-weight:bold; }
 #google-btn { background:#db4437; color:white; }
+#google-btn:hover { background:#c23328; transform:scale(1.03); }
+.error { color:red; margin-top:10px; font-size:14px; }
+.success { color:green; margin-top:10px; font-size:14px; }
 .products { display:flex; flex-wrap:wrap; gap:20px; }
 .product { background:white; border-radius:15px; padding:20px; width:calc(33.333% - 20px); box-shadow:0 10px 20px rgba(0,0,0,0.1); transition:.3s; cursor:pointer; }
 .product:hover { transform:translateY(-5px) scale(1.02); box-shadow:0 15px 25px rgba(0,0,0,0.2); }
@@ -24,16 +28,23 @@ header { display:flex; align-items:center; justify-content:center; background:#0
 .product-info { margin-top:10px; white-space:pre-line; text-align:left; }
 .btn { display:inline-block; background:#25d366; color:white; padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:bold; transition:.3s; margin-top:10px; border:none; cursor:pointer; }
 .btn:hover { background:#20b954; transform:scale(1.05); }
-.admin-panel { background:#e2e8f0; padding:20px; border-radius:15px; margin-bottom:20px; display:none; }
+footer { text-align:center; padding:15px; color:white; background:#0078d7; margin-top:40px; display:flex; flex-direction:column; gap:5px; }
+#cart-modal { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; border-radius:15px; box-shadow:0 10px 25px rgba(0,0,0,0.3); display:none; width:90%; max-width:400px; z-index:2000; }
+.cart-item { display:flex; justify-content:space-between; margin-bottom:10px; border-bottom:1px solid #ddd; padding-bottom:5px; align-items:center; }
+.cart-controls button { margin:0 3px; padding:2px 6px; cursor:pointer; border:none; border-radius:4px; }
+#close-cart { background:#f44336; color:white; border:none; padding:5px 10px; cursor:pointer; border-radius:5px; margin-top:10px; }
+#order-btn { background:#25d366; color:white; border:none; padding:10px 15px; cursor:pointer; border-radius:8px; margin-top:10px; font-weight:bold; width:100%; }
+#order-btn:hover { background:#20b954; }
+.admin-panel { background:#e2e8f0; padding:20px; border-radius:15px; margin-bottom:20px; }
 .admin-panel h3 { margin-top:0; }
 .admin-panel input, .admin-panel button { margin:5px 0; padding:8px; border-radius:6px; border:1px solid #ccc; }
-footer { text-align:center; padding:15px; color:white; background:#0078d7; margin-top:40px; }
+@media (max-width:768px){ .product { width:100% !important; } }
 </style>
 </head>
 <body>
 <header>
   <div id="logo-text">DLisans</div>
-  <div id="cart-btn">🛒 Səbət</div>
+  <div id="cart-btn" onclick="toggleCart()">🛒 Səbət <span id="cart-count">0</span></div>
   <button id="logout-btn" onclick="logout()">Çıxış</button>
 </header>
 
@@ -41,19 +52,28 @@ footer { text-align:center; padding:15px; color:white; background:#0078d7; margi
   <div class="auth-box">
     <h2>Google ilə daxil ol</h2>
     <button id="google-btn" onclick="googleLogin()">Google ilə daxil ol</button>
+    <p class="error" id="login-error"></p>
+    <p class="success" id="login-success"></p>
   </div>
 </div>
 
 <div class="main" id="home">
-  <div class="admin-panel" id="admin-panel">
-    <h3>Admin Paneli</h3>
-    <input type="text" id="product-name" placeholder="Məhsul adı">
-    <input type="text" id="product-price" placeholder="Məhsul qiyməti">
-    <input type="text" id="product-desc" placeholder="Məhsul təsviri">
-    <input type="text" id="product-img" placeholder="Məhsul şəkil linki">
+  <div class="admin-panel" id="admin-panel" style="display:none;">
+    <h3>Admin Panel</h3>
+    <label>Məhsul adı:</label><input type="text" id="product-name">
+    <label>Məhsul qiyməti:</label><input type="text" id="product-price">
+    <label>Məhsul təsviri:</label><input type="text" id="product-desc">
+    <label>Məhsul şəkil linki (URL):</label><input type="text" id="product-img">
     <button onclick="addProduct()">Məhsul əlavə et</button>
   </div>
   <div class="products" id="products"></div>
+</div>
+
+<div id="cart-modal">
+  <h2>Səbət</h2>
+  <div id="cart-items"></div>
+  <button id="order-btn" onclick="orderCart()">Sifariş et</button>
+  <button id="close-cart" onclick="toggleCart()">Bağla</button>
 </div>
 
 <footer>
@@ -63,8 +83,8 @@ footer { text-align:center; padding:15px; color:white; background:#0078d7; margi
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+import { getAuth, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAV2gxee4c4RZNvgqb1ID4ehCi5ZtckgCs",
@@ -75,18 +95,41 @@ const firebaseConfig = {
   appId: "1:671873538369:web:ffbb94792ab7b805a0e9c0",
   measurementId: "G-Q9CGH70JSL"
 };
-
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 const db = getFirestore(app);
 
+let currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
 let isAdmin = false;
+let products = [];
 
-function renderProducts(products) {
-  const productsContainer = document.getElementById("products");
+async function loadProducts() {
+  const querySnapshot = await getDocs(collection(db, "products"));
+  products = [];
+  querySnapshot.forEach((docu) => {
+    products.push({ id: docu.id, ...docu.data() });
+  });
+  renderProducts();
+}
+
+if(currentUser){
+  document.getElementById("auth-container").style.display="none";
+  document.getElementById("cart-btn").style.display="block";
+  document.getElementById("logout-btn").style.display="block";
+  if(currentUser.email === "dlisans2025@gmail.com"){
+    document.getElementById("admin-panel").style.display="block";
+    isAdmin = true;
+  }
+  loadProducts();
+}
+
+const productsContainer = document.getElementById("products");
+let editingIndex = null;
+
+function renderProducts() {
   productsContainer.innerHTML = "";
-  products.forEach((p) => {
+  products.forEach((p,idx) => {
     const div = document.createElement("div");
     div.className = "product";
     div.innerHTML = `
@@ -94,61 +137,132 @@ function renderProducts(products) {
       <h3>${p.name}</h3>
       <p>${p.price} AZN</p>
       <div class="product-info">${p.desc}</div>
-      ${isAdmin ? `<button class="btn" style="background:#ff4444;" onclick="deleteProduct('${p.id}')">Məhsulu sil</button>` : ""}
+      <button class="btn" onclick="addToCart('${p.name}','${p.price}')">Səbətə əlavə et</button>
+      ${isAdmin ? `<button class="btn" style="background:#ff4444;" onclick="deleteProduct(${idx})">Məhsulu sil</button>
+      <button class="btn" style="background:#0078d7;" onclick="editProduct(${idx})">Redaktə et</button>` : ''}
     `;
     productsContainer.appendChild(div);
   });
 }
 
-function loadProducts() {
-  const productsCol = collection(db, "products");
-  onSnapshot(productsCol, (snapshot) => {
-    const products = [];
-    snapshot.forEach((doc) => {
-      products.push({ id: doc.id, ...doc.data() });
-    });
-    renderProducts(products);
+let cart = JSON.parse(localStorage.getItem("cart")||"[]");
+document.getElementById("cart-count").innerText=cart.length;
+
+window.addToCart = (name, price) => { 
+  const existing = cart.find(i=>i.name===name);
+  if(existing){ existing.qty++; }
+  else{ cart.push({name, price, qty:1}); }
+  localStorage.setItem("cart", JSON.stringify(cart));
+  document.getElementById("cart-count").innerText=cart.length;
+}
+
+window.toggleCart = () => { 
+  const modal=document.getElementById("cart-modal"); 
+  modal.style.display=modal.style.display==="block"?"none":"block"; 
+  const items=document.getElementById("cart-items"); 
+  items.innerHTML=""; 
+  cart.forEach((i,idx)=>{
+    items.innerHTML+=`
+      <div class="cart-item">
+        <span>${i.name} (${i.qty}) - ${i.price} AZN</span>
+        <div class="cart-controls">
+          <button onclick="changeQty(${idx}, -1)">➖</button>
+          <button onclick="changeQty(${idx}, 1)">➕</button>
+          <button onclick="removeFromCart(${idx})">❌</button>
+        </div>
+      </div>` 
   });
 }
 
-async function addProduct() {
+window.changeQty = (idx, change) => {
+  cart[idx].qty += change;
+  if(cart[idx].qty <= 0) cart.splice(idx,1);
+  localStorage.setItem("cart", JSON.stringify(cart));
+  document.getElementById("cart-count").innerText=cart.length;
+  toggleCart(); toggleCart();
+}
+
+window.removeFromCart = (idx) => {
+  cart.splice(idx,1);
+  localStorage.setItem("cart", JSON.stringify(cart));
+  document.getElementById("cart-count").innerText=cart.length;
+  toggleCart(); toggleCart();
+}
+
+window.addProduct = async () => {
+  if(!isAdmin) return alert("Yalnız admin məhsul əlavə edə bilər!");
   const name = document.getElementById("product-name").value;
   const price = document.getElementById("product-price").value;
   const desc = document.getElementById("product-desc").value;
   const img = document.getElementById("product-img").value;
-  if (!name || !price || !desc || !img) { alert("Bütün sahələri doldurun!"); return; }
-  await addDoc(collection(db, "products"), { name, price, desc, img });
+  if(!name || !price || !desc || !img) return alert("Bütün sahələri doldurun!");
+
+  if(editingIndex !== null){
+    const ref = doc(db, "products", products[editingIndex].id);
+    await updateDoc(ref, { name, price, desc, img });
+    editingIndex = null;
+  } else {
+    await addDoc(collection(db, "products"), { name, price, desc, img });
+  }
+
+  document.getElementById("product-name").value = "";
+  document.getElementById("product-price").value = "";
+  document.getElementById("product-desc").value = "";
+  document.getElementById("product-img").value = "";
+  loadProducts();
 }
 
-async function deleteProduct(id) {
-  await deleteDoc(doc(db, "products", id));
+window.deleteProduct = async (idx) => {
+  if(!isAdmin) return alert("Yalnız admin silə bilər!");
+  if(confirm("Bu məhsulu silmək istəyirsiniz?")){
+    await deleteDoc(doc(db, "products", products[idx].id));
+    loadProducts();
+  }
 }
 
-function googleLogin() {
+window.editProduct = (idx) => {
+  const p = products[idx];
+  document.getElementById("product-name").value = p.name;
+  document.getElementById("product-price").value = p.price;
+  document.getElementById("product-desc").value = p.desc;
+  document.getElementById("product-img").value = p.img;
+  editingIndex = idx;
+  alert("Redaktə rejimi açıldı! Məhsulu dəyişdikdən sonra 'Məhsul əlavə et' düyməsinə basın.");
+}
+
+window.googleLogin = () => {
   signInWithPopup(auth, provider).then((result) => {
     const user = result.user;
-    document.getElementById("auth-container").style.display = "none";
-    document.getElementById("cart-btn").style.display = "block";
-    document.getElementById("logout-btn").style.display = "block";
-    if (user.email === "dlisans2025@gmail.com") {
-      document.getElementById("admin-panel").style.display = "block";
+    localStorage.setItem("currentUser", JSON.stringify({email:user.email}));
+    document.getElementById("auth-container").style.display="none";
+    document.getElementById("cart-btn").style.display="block";
+    document.getElementById("logout-btn").style.display="block";
+    if(user.email === "dlisans2025@gmail.com"){
+      document.getElementById("admin-panel").style.display="block";
       isAdmin = true;
     }
     loadProducts();
-  }).catch(console.error);
+  }).catch(e => { console.log(e); });
 }
 
-function logout() {
-  signOut(auth).then(() => {
-    document.getElementById("auth-container").style.display = "flex";
-    document.getElementById("cart-btn").style.display = "none";
-    document.getElementById("logout-btn").style.display = "none";
-    document.getElementById("admin-panel").style.display = "none";
+window.logout = () => {
+  signOut(auth).then(()=>{ 
+    localStorage.removeItem("currentUser");
+    document.getElementById("auth-container").style.display="flex";
+    document.getElementById("cart-btn").style.display="none";
+    document.getElementById("logout-btn").style.display="none";
+    document.getElementById("admin-panel").style.display="none";
     isAdmin = false;
   });
 }
 
-loadProducts();
+window.orderCart = () => {
+  if(cart.length===0){ alert("Səbət boşdur!"); return; }
+  let text = "Salam, mən sifariş etmək istəyirəm:%0A";
+  cart.forEach((i,idx)=>{ text+=`${idx+1}. ${i.name} (${i.qty}) - ${i.price} AZN%0A` });
+  const url = `https://wa.me/994555566828?text=${text}`;
+  window.open(url,"_blank");
+}
 </script>
 </body>
 </html>
