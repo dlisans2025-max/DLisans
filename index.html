@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DLisans </title>
+<title>DLisans</title>
 <link rel="icon" type="image/jpeg" href="https://i.postimg.cc/JGxxt6cV/Whats-App-Image-2025-09-27-at-03-12-23-b84d530b.jpg">
 <style>
 body, html { margin:0; padding:0; font-family: Arial, sans-serif; background:#f0f2f5; }
@@ -59,7 +59,7 @@ footer { text-align:center; padding:15px; color:white; background:#0078d7; margi
 
 <div class="main" id="home">
   <div class="admin-panel" id="admin-panel" style="display:none;">
-    <h3>Admin Paneli</h3>
+    <h3>Admin Panel</h3>
     <label>Məhsul adı:</label><input type="text" id="product-name">
     <label>Məhsul qiyməti:</label><input type="text" id="product-price">
     <label>Məhsul təsviri:</label><input type="text" id="product-desc">
@@ -84,6 +84,7 @@ footer { text-align:center; padding:15px; color:white; background:#0078d7; margi
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
 import { getAuth, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAV2gxee4c4RZNvgqb1ID4ehCi5ZtckgCs",
@@ -97,9 +98,21 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
+const db = getFirestore(app);
 
 let currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
 let isAdmin = false;
+let products = [];
+
+async function loadProducts() {
+  const querySnapshot = await getDocs(collection(db, "products"));
+  products = [];
+  querySnapshot.forEach((docu) => {
+    products.push({ id: docu.id, ...docu.data() });
+  });
+  renderProducts();
+}
+
 if(currentUser){
   document.getElementById("auth-container").style.display="none";
   document.getElementById("cart-btn").style.display="block";
@@ -108,15 +121,9 @@ if(currentUser){
     document.getElementById("admin-panel").style.display="block";
     isAdmin = true;
   }
+  loadProducts();
 }
 
-let products = JSON.parse(localStorage.getItem("products")||"[]");
-if(products.length===0){
-  products = [
-    { name: "Windows 11 Pro", price: "30", img: "https://i.postimg.cc/3xqHjz6J/windows11.jpg", desc: "Orijinal Microsoft Windows 11 Pro lisenziyası" },
-    { name: "Office 365", price: "25", img: "https://i.postimg.cc/xC7nKdnk/office365.jpg", desc: "1 illik Office 365 abunəliyi" }
-  ];
-}
 const productsContainer = document.getElementById("products");
 let editingIndex = null;
 
@@ -137,7 +144,6 @@ function renderProducts() {
     productsContainer.appendChild(div);
   });
 }
-renderProducts();
 
 let cart = JSON.parse(localStorage.getItem("cart")||"[]");
 document.getElementById("cart-count").innerText=cart.length;
@@ -183,28 +189,34 @@ window.removeFromCart = (idx) => {
   toggleCart(); toggleCart();
 }
 
-window.addProduct = () => {
+window.addProduct = async () => {
+  if(!isAdmin) return alert("Yalnız admin məhsul əlavə edə bilər!");
   const name = document.getElementById("product-name").value;
   const price = document.getElementById("product-price").value;
   const desc = document.getElementById("product-desc").value;
   const img = document.getElementById("product-img").value;
   if(!name || !price || !desc || !img) return alert("Bütün sahələri doldurun!");
-  try { new URL(img) } catch { return alert("Şəkil linki düzgün URL olmalıdır!"); }
+
   if(editingIndex !== null){
-    products[editingIndex] = {name, price, desc, img};
+    const ref = doc(db, "products", products[editingIndex].id);
+    await updateDoc(ref, { name, price, desc, img });
     editingIndex = null;
   } else {
-    products.push({name, price, desc, img});
+    await addDoc(collection(db, "products"), { name, price, desc, img });
   }
-  localStorage.setItem("products", JSON.stringify(products));
-  renderProducts();
+
+  document.getElementById("product-name").value = "";
+  document.getElementById("product-price").value = "";
+  document.getElementById("product-desc").value = "";
+  document.getElementById("product-img").value = "";
+  loadProducts();
 }
 
-window.deleteProduct = (idx) => {
+window.deleteProduct = async (idx) => {
+  if(!isAdmin) return alert("Yalnız admin silə bilər!");
   if(confirm("Bu məhsulu silmək istəyirsiniz?")){
-    products.splice(idx,1);
-    localStorage.setItem("products", JSON.stringify(products));
-    renderProducts();
+    await deleteDoc(doc(db, "products", products[idx].id));
+    loadProducts();
   }
 }
 
@@ -229,7 +241,7 @@ window.googleLogin = () => {
       document.getElementById("admin-panel").style.display="block";
       isAdmin = true;
     }
-    renderProducts();
+    loadProducts();
   }).catch(e => { console.log(e); });
 }
 
