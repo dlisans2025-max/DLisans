@@ -59,7 +59,7 @@ footer { text-align:center; padding:15px; color:white; background:#0078d7; margi
 
 <div class="main" id="home">
   <div class="admin-panel" id="admin-panel" style="display:none;">
-    <h3>Admin Panel</h3>
+    <h3>Admin Paneli</h3>
     <label>Məhsul adı:</label><input type="text" id="product-name">
     <label>Məhsul qiyməti:</label><input type="text" id="product-price">
     <label>Məhsul təsviri:</label><input type="text" id="product-desc">
@@ -84,7 +84,7 @@ footer { text-align:center; padding:15px; color:white; background:#0078d7; margi
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
 import { getAuth, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
-import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAV2gxee4c4RZNvgqb1ID4ehCi5ZtckgCs",
@@ -100,36 +100,14 @@ const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 const db = getFirestore(app);
 
-let currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
 let isAdmin = false;
 let products = [];
-
-async function loadProducts() {
-  const querySnapshot = await getDocs(collection(db, "products"));
-  products = [];
-  querySnapshot.forEach((docu) => {
-    products.push({ id: docu.id, ...docu.data() });
-  });
-  renderProducts();
-}
-
-if(currentUser){
-  document.getElementById("auth-container").style.display="none";
-  document.getElementById("cart-btn").style.display="block";
-  document.getElementById("logout-btn").style.display="block";
-  if(currentUser.email === "dlisans2025@gmail.com"){
-    document.getElementById("admin-panel").style.display="block";
-    isAdmin = true;
-  }
-  loadProducts();
-}
-
-const productsContainer = document.getElementById("products");
-let editingIndex = null;
+let cart = JSON.parse(localStorage.getItem("cart")||"[]");
 
 function renderProducts() {
+  const productsContainer = document.getElementById("products");
   productsContainer.innerHTML = "";
-  products.forEach((p,idx) => {
+  products.forEach((p) => {
     const div = document.createElement("div");
     div.className = "product";
     div.innerHTML = `
@@ -138,15 +116,37 @@ function renderProducts() {
       <p>${p.price} AZN</p>
       <div class="product-info">${p.desc}</div>
       <button class="btn" onclick="addToCart('${p.name}','${p.price}')">Səbətə əlavə et</button>
-      ${isAdmin ? `<button class="btn" style="background:#ff4444;" onclick="deleteProduct(${idx})">Məhsulu sil</button>
-      <button class="btn" style="background:#0078d7;" onclick="editProduct(${idx})">Redaktə et</button>` : ''}
+      ${isAdmin ? `<button class="btn" style="background:#ff4444;" onclick="deleteProduct('${p.id}')">Məhsulu sil</button>` : ''}
     `;
     productsContainer.appendChild(div);
   });
+  document.getElementById("cart-count").innerText=cart.length;
 }
 
-let cart = JSON.parse(localStorage.getItem("cart")||"[]");
-document.getElementById("cart-count").innerText=cart.length;
+function loadProducts() {
+  const productsCol = collection(db, "products");
+  onSnapshot(productsCol, (snapshot) => {
+    products = [];
+    snapshot.forEach((doc) => {
+      products.push({ id: doc.id, ...doc.data() });
+    });
+    renderProducts();
+  });
+}
+
+window.addProduct = async () => {
+  const name = document.getElementById("product-name").value;
+  const price = document.getElementById("product-price").value;
+  const desc = document.getElementById("product-desc").value;
+  const img = document.getElementById("product-img").value;
+  if (!name || !price || !desc || !img) { alert("Bütün sahələri doldurun!"); return; }
+  try { new URL(img); } catch { alert("Şəkil linki düzgün URL olmalıdır!"); return; }
+  await addDoc(collection(db, "products"), { name, price, desc, img });
+}
+
+window.deleteProduct = async (id) => {
+  await deleteDoc(doc(db, "products", id));
+}
 
 window.addToCart = (name, price) => { 
   const existing = cart.find(i=>i.name===name);
@@ -189,51 +189,9 @@ window.removeFromCart = (idx) => {
   toggleCart(); toggleCart();
 }
 
-window.addProduct = async () => {
-  if(!isAdmin) return alert("Yalnız admin məhsul əlavə edə bilər!");
-  const name = document.getElementById("product-name").value;
-  const price = document.getElementById("product-price").value;
-  const desc = document.getElementById("product-desc").value;
-  const img = document.getElementById("product-img").value;
-  if(!name || !price || !desc || !img) return alert("Bütün sahələri doldurun!");
-
-  if(editingIndex !== null){
-    const ref = doc(db, "products", products[editingIndex].id);
-    await updateDoc(ref, { name, price, desc, img });
-    editingIndex = null;
-  } else {
-    await addDoc(collection(db, "products"), { name, price, desc, img });
-  }
-
-  document.getElementById("product-name").value = "";
-  document.getElementById("product-price").value = "";
-  document.getElementById("product-desc").value = "";
-  document.getElementById("product-img").value = "";
-  loadProducts();
-}
-
-window.deleteProduct = async (idx) => {
-  if(!isAdmin) return alert("Yalnız admin silə bilər!");
-  if(confirm("Bu məhsulu silmək istəyirsiniz?")){
-    await deleteDoc(doc(db, "products", products[idx].id));
-    loadProducts();
-  }
-}
-
-window.editProduct = (idx) => {
-  const p = products[idx];
-  document.getElementById("product-name").value = p.name;
-  document.getElementById("product-price").value = p.price;
-  document.getElementById("product-desc").value = p.desc;
-  document.getElementById("product-img").value = p.img;
-  editingIndex = idx;
-  alert("Redaktə rejimi açıldı! Məhsulu dəyişdikdən sonra 'Məhsul əlavə et' düyməsinə basın.");
-}
-
 window.googleLogin = () => {
   signInWithPopup(auth, provider).then((result) => {
     const user = result.user;
-    localStorage.setItem("currentUser", JSON.stringify({email:user.email}));
     document.getElementById("auth-container").style.display="none";
     document.getElementById("cart-btn").style.display="block";
     document.getElementById("logout-btn").style.display="block";
@@ -263,6 +221,8 @@ window.orderCart = () => {
   const url = `https://wa.me/994555566828?text=${text}`;
   window.open(url,"_blank");
 }
+
+loadProducts();
 </script>
 </body>
 </html>
